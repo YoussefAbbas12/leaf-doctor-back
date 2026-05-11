@@ -16,7 +16,7 @@ app.use(cors({
     "http://localhost:5173", 
     "http://localhost",
     "capacitor://localhost",
-    /\.vercel\.app$/ // Allow all Vercel subdomains
+    /\.vercel\.app$/ 
   ],
   credentials: true
 }));
@@ -36,7 +36,7 @@ app.use(session({
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
     sameSite: "lax",
-    secure: false, // Set to true if using HTTPS in production
+    secure: false,
   },
 }));
 
@@ -51,25 +51,18 @@ function log(message, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse;
-  const originalResJson = res.json;
-  res.json = function(bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      log(logLine);
+      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
+  next();
+});
+
 // Root route for health check
 app.get("/", (req, res) => {
   res.send("<h1>Leaf Doctor API is running!</h1><p>Frontend is hosted separately.</p>");
-});
-
-next();
 });
 
 // Async initialization
