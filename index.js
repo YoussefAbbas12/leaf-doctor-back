@@ -64,7 +64,12 @@ app.use((req, res, next) => {
       log(logLine);
     }
   });
-  next();
+// Root route for health check
+app.get("/", (req, res) => {
+  res.send("<h1>Leaf Doctor API is running!</h1><p>Frontend is hosted separately.</p>");
+});
+
+next();
 });
 
 // Async initialization
