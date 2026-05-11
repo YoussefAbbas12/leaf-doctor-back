@@ -3,7 +3,6 @@ import express from "express";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import { registerRoutes } from "./routes.js";
-import { serveStatic } from "./static.js";
 import { createServer } from "http";
 import cors from "cors";
 import { connectDB } from "./database.js";
@@ -16,7 +15,8 @@ app.use(cors({
     "http://localhost:5173", 
     "http://localhost",
     "capacitor://localhost",
-    /\.vercel\.app$/ 
+    /\.vercel\.app$/,
+    "https://leaf-doctor-back.vercel.app"
   ],
   credentials: true
 }));
@@ -40,56 +40,37 @@ app.use(session({
   },
 }));
 
-function log(message, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
-  });
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
-
-// Middleware for logging
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
-    }
-  });
-  next();
+// Simple Health Check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", message: "API is live" });
 });
 
-// Root route for health check
 app.get("/", (req, res) => {
-  res.send("<h1>Leaf Doctor API is running!</h1><p>Frontend is hosted separately.</p>");
+  res.send("<h1>Leaf Doctor API is running!</h1>");
 });
 
-// Async initialization
-await connectDB();
-await registerRoutes(httpServer, app);
+// Async initialization wrapped in a promise to prevent freezing
+const initApp = async () => {
+  try {
+    console.log("Initializing database...");
+    await connectDB();
+    console.log("Registering routes...");
+    await registerRoutes(httpServer, app);
+    console.log("Init complete.");
+  } catch (err) {
+    console.error("Initialization failed:", err);
+  }
+};
 
-// Error handling middleware
-app.use((err, _req, res, next) => {
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-  console.error("Internal Server Error:", err);
-  if (res.headersSent) return next(err);
-  return res.status(status).json({ message });
-});
+// Start init but don't block the export
+initApp();
 
-// Static serving for production (only if not on Vercel)
-if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
-  serveStatic(app);
-}
-
-// Local server startup (Skipped on Vercel)
+// Local server startup
 if (!process.env.VERCEL) {
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen({ port, host: "0.0.0.0" }, () => {
-    log(`Server running locally on port ${port}`);
+    console.log(`Server running on port ${port}`);
   });
 }
 
 export default app;
-export { log };
