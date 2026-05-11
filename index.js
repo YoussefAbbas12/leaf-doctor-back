@@ -9,6 +9,10 @@ import { connectDB } from "./database.js";
 
 const app = express();
 
+// Increase payload limits for large images
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ limit: "20mb", extended: true }));
+
 // CORS configuration for web and mobile
 app.use(cors({
   origin: [
@@ -23,9 +27,6 @@ app.use(cors({
 
 const httpServer = createServer(app);
 const MemStore = MemoryStore(session);
-
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: false }));
 
 app.use(session({
   secret: process.env.SESSION_SECRET || "doctorplant-secret-2024",
@@ -45,33 +46,36 @@ app.get("/", (req, res) => {
   res.send("<h1>Leaf Doctor API is running!</h1>");
 });
 
-// Middleware to ensure DB is connected
+// Database middleware
 app.use(async (req, res, next) => {
   try {
     await connectDB();
     next();
   } catch (err) {
-    res.status(503).json({ message: "Database connection in progress, please try again." });
+    res.status(503).json({ message: "Database connection failed" });
   }
 });
 
 // Register routes
 await registerRoutes(httpServer, app);
 
+// Handle 404 for all other requests as JSON (prevents HTML errors)
+app.use((req, res) => {
+  res.status(404).json({ message: `Route ${req.method} ${req.url} not found` });
+});
+
 // Error handling middleware
 app.use((err, _req, res, next) => {
   const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-  console.error("Internal Server Error:", err);
-  if (res.headersSent) return next(err);
-  return res.status(status).json({ message });
+  console.error("Server Error:", err);
+  res.status(status).json({ message: err.message || "Internal Server Error" });
 });
 
 // Local server startup
 if (!process.env.VERCEL) {
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen({ port, host: "0.0.0.0" }, () => {
-    console.log(`Server running on port ${port}`);
+    console.log(`Server running locally on port ${port}`);
   });
 }
 
