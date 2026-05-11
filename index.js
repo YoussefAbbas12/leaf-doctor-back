@@ -40,30 +40,32 @@ app.use(session({
   },
 }));
 
-// Simple Health Check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", message: "API is live" });
-});
-
+// Root route
 app.get("/", (req, res) => {
   res.send("<h1>Leaf Doctor API is running!</h1>");
 });
 
-// Async initialization wrapped in a promise to prevent freezing
-const initApp = async () => {
+// Middleware to ensure DB is connected
+app.use(async (req, res, next) => {
   try {
-    console.log("Initializing database...");
     await connectDB();
-    console.log("Registering routes...");
-    await registerRoutes(httpServer, app);
-    console.log("Init complete.");
+    next();
   } catch (err) {
-    console.error("Initialization failed:", err);
+    res.status(503).json({ message: "Database connection in progress, please try again." });
   }
-};
+});
 
-// Start init but don't block the export
-initApp();
+// Register routes
+await registerRoutes(httpServer, app);
+
+// Error handling middleware
+app.use((err, _req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  console.error("Internal Server Error:", err);
+  if (res.headersSent) return next(err);
+  return res.status(status).json({ message });
+});
 
 // Local server startup
 if (!process.env.VERCEL) {
