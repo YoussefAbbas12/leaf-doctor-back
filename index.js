@@ -17,6 +17,8 @@ app.use(express.urlencoded({ limit: "20mb", extended: true }));
 app.use(cors({
   origin: [
     "http://localhost:5173", 
+    "http://127.0.0.1:5173",
+    "http://localhost:5000",
     "http://localhost",
     "capacitor://localhost",
     /\.vercel\.app$/,

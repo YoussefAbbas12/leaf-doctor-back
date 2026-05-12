@@ -9,14 +9,22 @@ export async function connectDB() {
       throw new Error("MONGODB_URI is not defined in environment variables");
     }
 
-    console.log("Connecting to MongoDB...");
+    // Mask password for safe logging
+    const maskedUri = uri.replace(/:([^:@]{1,})@/, ':****@');
+    console.log(`Connecting to MongoDB with URI: ${maskedUri}`);
+
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000, // Wait 10s before failing
-      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 15000, // Increased timeout
+      connectTimeoutMS: 15000,
     });
     console.log("MongoDB Connected successfully.");
   } catch (err) {
-    console.error("MongoDB connection error:", err);
-    // Don't throw, let the app try to survive or retry on next request
+    console.error("CRITICAL: MongoDB connection error details:", {
+      message: err.message,
+      code: err.code,
+      codeName: err.codeName
+    });
+    // Rethrow to ensure middleware knows it failed
+    throw err;
   }
 }
