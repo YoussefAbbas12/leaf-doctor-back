@@ -8,6 +8,7 @@ import cors from "cors";
 import { connectDB } from "./database.js";
 
 const app = express();
+app.set("trust proxy", 1); // Trust Vercel proxy for secure cookies
 
 // Increase payload limits for large images
 app.use(express.json({ limit: "20mb" }));
@@ -15,16 +16,9 @@ app.use(express.urlencoded({ limit: "20mb", extended: true }));
 
 // CORS configuration for web and mobile
 app.use(cors({
-  origin: [
-    "http://localhost:5173", 
-    "http://127.0.0.1:5173",
-    "http://localhost:5000",
-    "http://localhost",
-    "capacitor://localhost",
-    /\.vercel\.app$/,
-    "https://leaf-doctor-back.vercel.app"
-  ],
-  credentials: true
+  origin: true, // Allow all origins to avoid CORS issues on mobile
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 }));
 
 const httpServer = createServer(app);
@@ -38,8 +32,8 @@ app.use(session({
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: "none", // Required for cross-site cookies
+    secure: true, // Required when sameSite is none
   },
 }));
 
